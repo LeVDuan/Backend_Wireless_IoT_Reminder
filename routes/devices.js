@@ -1,11 +1,11 @@
 import express from 'express';
-import { getDevices, createDevice, updateDevice, deleteDevice, getActiveDevices } from '../controllers/devices.js';
-const router = express.Router();
+import { getAllDevices, getActiveDevices, addDevice, renameDevice, deleteDevice } from '../controllers/devices.js';
+const deviceRouter = express.Router();
 
-router.get('/', getDevices);
-router.get('/activeDevices', getActiveDevices);
-router.post('/', createDevice);
-router.patch('/:id', updateDevice);
-router.delete('/:id', deleteDevice);
+deviceRouter.get('/', getAllDevices);
+deviceRouter.get('/activeDevices', getActiveDevices);
+deviceRouter.post('/', addDevice);
+deviceRouter.patch('/:id', renameDevice);
+deviceRouter.delete('/:id', deleteDevice);
 
-export default router;
+export default deviceRouter;

@@ -1,20 +1,27 @@
-import DeviceInfo from "../models/deviceInfo.js";
+import DeviceSchema from "../models/device.js";
 import mongoose from 'mongoose';
 
-
-export const getDevices = async (req, res) => {
+export const getAllDevices = async (req, res) => {
   try {
-    const deviceList = await DeviceInfo.find();
+    const deviceList = await DeviceSchema.find();
     res.status(200).json(deviceList);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
 
-export const createDevice = async (req, res) => {
-  const { device_id, name, last_update, pin, status } = req.body;
+export const getActiveDevices = async (req, res) => {
+  try {
+    const activeDevices = await DeviceSchema.find({isActive: true});
+    res.status(200).json(activeDevices);
+  } catch (error) {
+    res.status(404).json({ message: error.message });
+  }
+}
 
-  const newDevice = new DeviceInfo({ device_id, name, last_update, pin, status })
+export const addDevice = async (req, res) => {
+  const { deviceId, name } = req.body;
+  const newDevice = new DeviceSchema({ deviceId, name })
 
   try {
       await newDevice.save();
@@ -24,14 +31,14 @@ export const createDevice = async (req, res) => {
   }
 };
 
-export const updateDevice = async (req, res) => {
-  const {id} = req.params;
-  const { device_id, name, last_update, pin, status } = req.body;
+export const renameDevice = async (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
 
   if (!mongoose.Types.ObjectId.isValid(id)) return res.status(404).send("not found");
 
-  const updatedDevice = { _id: id, device_id, name, last_update, pin, status };
-  const result = await DeviceInfo.findByIdAndUpdate(id, updatedDevice, { new : true })
+  const renamedDevice = { _id: id, name };
+  await DeviceSchema.findByIdAndUpdate(id, renamedDevice, { new : true })
   res.json("success");
 }
 
@@ -40,16 +47,6 @@ export const deleteDevice = async (req, res) => {
 
   if (!mongoose.Types.ObjectId.isValid(id)) return res.status(404).send("not found");
 
-  await DeviceInfo.findByIdAndDelete(id);
+  await DeviceSchema.findByIdAndDelete(id);
   res.json("success");
-}
-
-export const getActiveDevices = async (req, res) => {
-  try {
-    const deviceList = await DeviceInfo.find();
-    const activeDevices = deviceList.filter(device => device.status === 1 || device.status === 0)
-    res.status(200).json(activeDevices);
-  } catch (error) {
-    res.status(404).json({ message: error.message });
-  }
 }
