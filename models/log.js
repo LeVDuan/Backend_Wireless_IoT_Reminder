@@ -7,11 +7,7 @@ const logSchema = mongoose.Schema({
         require: false
     },
     userName: String,
-    deviceId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Device',
-        required: true
-    },
+    deviceId: String,
     action: {
         type: String,
         required: true,
