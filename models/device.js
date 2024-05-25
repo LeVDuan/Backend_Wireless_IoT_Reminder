@@ -5,13 +5,34 @@ const deviceSchema = mongoose.Schema({
         type: Number,
         require: true
     },
-    name: String,
+    name: {
+        type: String,
+        require: true
+    },
     lastUpdated: {
         type: Date,
         default: new Date(),
-    }, 
-    batteryStatus: Number,
-    isActive: Boolean
+    },
+    batteryStatus: {
+        type: Number,
+        default: 0
+    },
+    isActive: {
+        type: Boolean,
+        default: true
+    },
+    VBRCount: {
+        type: Number,
+        default: 0
+    },
+    LGTCount: {
+        type: Number,
+        default: 0
+    },
+    VLGCount: {
+        type: Number,
+        default: 0
+    }
 });
 
 const DeviceSchema = mongoose.model('Device', deviceSchema);

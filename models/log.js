@@ -7,7 +7,8 @@ const logSchema = mongoose.Schema({
         require: false
     },
     userName: String,
-    deviceId: String,
+    deviceId: Number,
+    deviceName: String,
     action: {
         type: String,
         required: true,
@@ -16,7 +17,8 @@ const logSchema = mongoose.Schema({
     details: {
         type: mongoose.Schema.Types.Mixed, 
         required: true
-    }
+    },
+    result: String
 });
 
 const LogSchema = mongoose.model('LogAction', logSchema);
