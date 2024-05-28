@@ -9,6 +9,25 @@ export const getLogs = async (req, res) => {
   }
 };
 
+export const getRecentActivity = async (req, res) => {
+  try {
+    const deviceId = req.query.deviceId;
+    let logs;
+    if(deviceId != undefined) {
+      logs = await LogSchema.find({ deviceId: deviceId })
+        .sort({ timestamp: -1 })
+        .limit(3);
+    } else{
+      logs = await LogSchema.find()
+        .sort({ timestamp: -1 })
+        .limit(3);
+    }
+      res.status(200).json(logs);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 export const createLog = async (req, res) => {
   const { userName, deviceId, deviceName, action, details, result } = req.body;
 
@@ -30,7 +49,6 @@ export const createLog = async (req, res) => {
 };
 
 export const getAnalytics = async (req, res) => {
-
   try {
     const VBRCount = await LogSchema.countDocuments({
       action: "control",
@@ -47,9 +65,8 @@ export const getAnalytics = async (req, res) => {
       result: "success",
       "details.type": "vibrate and light",
     });
-    
+
     const dayAgo = req.query.dayAgo;
-    console.log(dayAgo)
 
     // Query the number of documents with action='control' in the previous 7 days
     const queryDaysAgo = new Date();

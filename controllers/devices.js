@@ -3,7 +3,9 @@ import mongoose from "mongoose";
 
 export const getAllDevices = async (req, res) => {
   try {
-    const deviceList = await DeviceSchema.find();
+    let deviceList = await DeviceSchema.find();
+    deviceList.sort((a, b) => a.deviceId - b.deviceId)
+
     res.status(200).json({ devices: deviceList, total: deviceList.length });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -13,6 +15,8 @@ export const getAllDevices = async (req, res) => {
 export const getActiveDevices = async (req, res) => {
   try {
     const activeDevices = await DeviceSchema.find({ isActive: true });
+    activeDevices.sort((a, b) => a.deviceId - b.deviceId)
+
     res
       .status(200)
       .json({ devices: activeDevices, total: activeDevices.length });
@@ -36,6 +40,7 @@ export const getDevice = async (req, res) => {
 
 export const addDevice = async (req, res) => {
   const { deviceId, name } = req.body;
+  console.log(req.body)
   const newDevice = new DeviceSchema({ deviceId, name });
 
   try {

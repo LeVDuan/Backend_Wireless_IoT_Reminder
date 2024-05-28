@@ -19,7 +19,7 @@ const deviceSchema = mongoose.Schema({
     },
     isActive: {
         type: Boolean,
-        default: true
+        default: false
     },
     VBRCount: {
         type: Number,
