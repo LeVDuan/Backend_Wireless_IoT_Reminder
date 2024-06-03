@@ -1,8 +1,10 @@
 import LogSchema from "../models/log.js";
+import DeviceSchema from "../models/device.js";
+import { VIBRATE, LIGHT, VIBRATE_LIGHT } from "../constants/index.js";
 
 export const getLogs = async (req, res) => {
   try {
-    const logs = await LogSchema.find();
+    const logs = await LogSchema.find().sort({ timestamp: -1 });
     res.status(200).json({ logs: logs, total: logs.length });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -13,23 +15,21 @@ export const getRecentActivity = async (req, res) => {
   try {
     const deviceId = req.query.deviceId;
     let logs;
-    if(deviceId != undefined) {
+    if (deviceId != undefined) {
       logs = await LogSchema.find({ deviceId: deviceId })
         .sort({ timestamp: -1 })
         .limit(3);
-    } else{
-      logs = await LogSchema.find()
-        .sort({ timestamp: -1 })
-        .limit(3);
+    } else {
+      logs = await LogSchema.find().sort({ timestamp: -1 }).limit(3);
     }
-      res.status(200).json(logs);
+    res.status(200).json(logs);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
 
 export const createLog = async (req, res) => {
-  const { userName, deviceId, deviceName, action, details, result } = req.body;
+  const { userName, deviceId, deviceName, action, details, result } = req.body.log;
 
   const newLog = new LogSchema({
     userName,
@@ -39,7 +39,7 @@ export const createLog = async (req, res) => {
     details,
     result,
   });
-
+  console.log("log: ", req.body);
   try {
     await newLog.save();
     res.status(201).json("success");
@@ -53,27 +53,51 @@ export const getAnalytics = async (req, res) => {
     const VBRCount = await LogSchema.countDocuments({
       action: "control",
       result: "success",
-      "details.type": "vibrate",
+      "details.type": VIBRATE,
     });
     const LGTCount = await LogSchema.countDocuments({
       action: "control",
       result: "success",
-      "details.type": "light",
+      "details.type": LIGHT,
     });
     const VLGCount = await LogSchema.countDocuments({
       action: "control",
       result: "success",
-      "details.type": "vibrate and light",
+      "details.type": VIBRATE_LIGHT,
     });
-
-    const dayAgo = req.query.dayAgo;
+    const deviceCount = await DeviceSchema.countDocuments();
+    const deviceActiveCount = await DeviceSchema.countDocuments({
+      isActive: true,
+    });
 
     // Query the number of documents with action='control' in the previous 7 days
     const queryDaysAgo = new Date();
-    queryDaysAgo.setDate(queryDaysAgo.getDate() - dayAgo);
+    queryDaysAgo.setDate(queryDaysAgo.getDate() - 7);
 
     const query = {
       action: "control",
+      result: "success",
+      timestamp: { $gte: queryDaysAgo },
+    };
+
+    const queryVBR = {
+      action: "control",
+      result: "success",
+      "details.type": VIBRATE,
+      timestamp: { $gte: queryDaysAgo },
+    };
+
+    const queryLGT = {
+      action: "control",
+      result: "success",
+      "details.type": LIGHT,
+      timestamp: { $gte: queryDaysAgo },
+    };
+
+    const queryVLG = {
+      action: "control",
+      result: "success",
+      "details.type": VIBRATE_LIGHT,
       timestamp: { $gte: queryDaysAgo },
     };
     const results = await LogSchema.aggregate([
@@ -94,12 +118,72 @@ export const getAnalytics = async (req, res) => {
         $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 },
       },
     ]);
+    const resultsVBR = await LogSchema.aggregate([
+      {
+        $match: queryVBR,
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$timestamp" },
+            month: { $month: "$timestamp" },
+            day: { $dayOfMonth: "$timestamp" },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 },
+      },
+    ]);
+    const resultsLGT = await LogSchema.aggregate([
+      {
+        $match: queryLGT,
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$timestamp" },
+            month: { $month: "$timestamp" },
+            day: { $dayOfMonth: "$timestamp" },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 },
+      },
+    ]);
+
+    const resultsVLG = await LogSchema.aggregate([
+      {
+        $match: queryVLG,
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$timestamp" },
+            month: { $month: "$timestamp" },
+            day: { $dayOfMonth: "$timestamp" },
+          },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 },
+      },
+    ]);
 
     res.status(200).json({
       VBR: VBRCount,
       LGT: LGTCount,
       VLG: VLGCount,
-      control: results,
+      deviceCount: deviceCount,
+      deviceActiveCount: deviceActiveCount,
+      controlLastWeek: results,
+      VBRLastWeek: resultsVBR,
+      LGTLastWeek: resultsLGT,
+      VLGLastWeek: resultsVLG,
     });
   } catch (error) {
     res.status(400).json({ message: error.message });

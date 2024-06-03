@@ -3,12 +3,12 @@ import mongoose from "mongoose";
 
 export const getAllDevices = async (req, res) => {
   try {
-    let deviceList = await DeviceSchema.find();
-    deviceList.sort((a, b) => a.deviceId - b.deviceId)
+    let deviceList = await DeviceSchema.find().sort({ deviceId: 1 });
+    // deviceList.sort((a, b) => a.deviceId - b.deviceId)
 
     res.status(200).json({ devices: deviceList, total: deviceList.length });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(400).json({ result:"Failed!" });
   }
 };
 
@@ -21,7 +21,7 @@ export const getActiveDevices = async (req, res) => {
       .status(200)
       .json({ devices: activeDevices, total: activeDevices.length });
   } catch (error) {
-    res.status(404).json({ message: error.message });
+    res.status(404).json({ result:"Failed!"});
   }
 };
 
@@ -33,7 +33,7 @@ export const getDevice = async (req, res) => {
       .status(200)
       .json({device});
   } catch (error) {
-    res.status(404).json({ message: error.message });
+    res.status(404).json({ result:"Failed!" });
   }
 };
 
@@ -45,22 +45,23 @@ export const addDevice = async (req, res) => {
 
   try {
     await newDevice.save();
-    res.status(201).json("success");
+    res.status(201).json({result: "Success!"});
   } catch (error) {
-    res.status(409).json({ message: error.message });
+    res.status(409).json({ result: "Failed!" });
   }
 };
 
 export const renameDevice = async (req, res) => {
   const { id } = req.params;
-  const { name } = req.body;
-
+  console.log(id)
+  const { newName } = req.body;
+  console.log(req.body);
   if (!mongoose.Types.ObjectId.isValid(id))
-    return res.status(404).send("not found");
+    return res.status(404).send({result: "not found"});
 
-  const renamedDevice = { _id: id, name };
+  const renamedDevice = { _id: id, name: newName };
   await DeviceSchema.findByIdAndUpdate(id, renamedDevice, { new: true });
-  res.json("success");
+  res.json({result: "Success!"});
 };
 
 export const updateCounter = async (req, res) => {
@@ -68,7 +69,7 @@ export const updateCounter = async (req, res) => {
   const { ctrlType } = req.body;
   
   if (!mongoose.Types.ObjectId.isValid(id))
-    return res.status(404).send("not found");
+    return res.status(404).send({result: "not found"});
   switch (ctrlType) {
     case "VBR":
       await DeviceSchema.findByIdAndUpdate(
@@ -101,8 +102,48 @@ export const updateCounter = async (req, res) => {
     );
       break;
   }
-  res.json("success");
+  res.json({result: "Success!"});
 };
+
+export const updateStatus = async (req, res) => {
+
+  const { id } = req.params;
+  if(id === "all") {
+      try {
+        const updates = req.body.update; 
+        const deviceIdsToUpdate = updates.map(update => update.deviceId);
+
+        for (const update of updates) {
+            const { deviceId, batteryStatus } = update;
+            await DeviceSchema.updateMany(
+                { deviceId },
+                { $set: { batteryStatus, isActive: true } }
+            );
+        }
+
+        await DeviceSchema.updateMany(
+            { deviceId: { $nin: deviceIdsToUpdate } },
+            { $set: { isActive: false } }
+        );
+
+        res.status(200).json({result: "Success!"});
+    } catch (error) {
+        res.status(500).json({result: "server error"} );
+    }
+
+  } else {
+
+    const { isActive, batteryStatus } = req.body;
+    const lastUpdated = new Date()
+    if (!mongoose.Types.ObjectId.isValid(id))
+      return res.status(404).send({result: "not found"});
+    const updatedDevice = { _id: id, isActive, batteryStatus, lastUpdated };
+    await DeviceSchema.findByIdAndUpdate(id, updatedDevice, { new: true });
+    res.json({result: "Success!"});
+  }
+
+};
+
 
 export const deleteDevice = async (req, res) => {
   const { id } = req.params;
@@ -110,8 +151,8 @@ export const deleteDevice = async (req, res) => {
   console.log("Delete ", id);
 
   if (!mongoose.Types.ObjectId.isValid(id))
-    return res.status(404).send("not found");
+    return res.status(404).send({result: "not found"});
 
   await DeviceSchema.findByIdAndDelete(id);
-  res.json("success");
+  res.json({result: "Success!"});
 };
