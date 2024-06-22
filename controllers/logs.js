@@ -3,11 +3,22 @@ import DeviceSchema from "../models/device.js";
 import { VIBRATE, LIGHT, VIBRATE_LIGHT } from "../constants/index.js";
 
 export const getLogs = async (req, res) => {
+  const { dates = [], action = "" } = req.query ?? "";
+  // console.log("date:", dates, "action", action);
   try {
     const logs = await LogSchema.find().sort({ timestamp: -1 });
-    res.status(200).json({ logs: logs, total: logs.length });
+    const filteredData = logs.filter((log) => {
+      const isActionMatched = action === "" || log.action === action;
+      const isDateInRange = !dates ||
+        dates.length === 0 ||
+        (log.timestamp >= new Date(dates[0]) &&
+          log.timestamp <= new Date(dates[1]));
+      return isActionMatched && isDateInRange;
+    });
+    // console.log(filteredData);
+    res.status(200).json({ logs: filteredData, total: filteredData.length });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(400).json({ message: error.message, result: "Failed!" });
   }
 };
 
@@ -29,7 +40,8 @@ export const getRecentActivity = async (req, res) => {
 };
 
 export const createLog = async (req, res) => {
-  const { userName, deviceId, deviceName, action, details, result } = req.body.log;
+  const { userName, deviceId, deviceName, action, details, result } =
+    req.body.log;
 
   const newLog = new LogSchema({
     userName,

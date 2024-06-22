@@ -151,8 +151,12 @@ export const deleteDevice = async (req, res) => {
   console.log("Delete ", id);
 
   if (!mongoose.Types.ObjectId.isValid(id))
-    return res.status(404).send({result: "not found"});
+    return res.status(404).send({result: "invalid"});
 
+  const device = await DeviceSchema.findById(id)
+  if(!device) {
+    return res.status(404).send({result: "not found"});
+  }
   await DeviceSchema.findByIdAndDelete(id);
   res.json({result: "Success!"});
 };
