@@ -1,5 +1,7 @@
 import LogSchema from "../models/log.js";
 import DeviceSchema from "../models/device.js";
+import mongoose from "mongoose";
+
 import { VIBRATE, LIGHT, VIBRATE_LIGHT } from "../constants/index.js";
 
 export const getLogs = async (req, res) => {
@@ -35,28 +37,7 @@ export const getRecentActivity = async (req, res) => {
     }
     res.status(200).json(logs);
   } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-};
-
-export const createLog = async (req, res) => {
-  const { userName, deviceId, deviceName, action, details, result } =
-    req.body.log;
-
-  const newLog = new LogSchema({
-    userName,
-    deviceId,
-    deviceName,
-    action,
-    details,
-    result,
-  });
-  console.log("log: ", req.body);
-  try {
-    await newLog.save();
-    res.status(201).json("success");
-  } catch (error) {
-    res.status(409).json({ message: error.message });
+    res.status(400).json({ message: error.message, result: "Failed!" });
   }
 };
 
@@ -198,6 +179,22 @@ export const getAnalytics = async (req, res) => {
       VLGLastWeek: resultsVLG,
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(400).json({ message: error.message, result: "Failed!" });
   }
+};
+
+export const deleteLog = async (req, res) => {
+  const { id } = req.params;
+
+  console.log("DeleteLogId: ", id);
+
+  if (!mongoose.Types.ObjectId.isValid(id))
+    return res.status(404).send({result: "invalid"});
+
+  const log = await LogSchema.findById(id)
+  if(!log) {
+    return res.status(404).send({result: "Not found!"});
+  }
+  await LogSchema.findByIdAndDelete(id);
+  res.status(200).json({result: "Success!"});
 };
