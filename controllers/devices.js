@@ -22,47 +22,9 @@ const createLog = async (logInfo) => {
   }
   
 }
-const updateCtrlCounter = async (id, ctrlType) => {
-  
-  if (!mongoose.Types.ObjectId.isValid(id))
-    return console.log("Device not found!")
-  switch (ctrlType) {
-    case "VBR":
-      await DeviceSchema.findByIdAndUpdate(
-        id,
-        {
-            $inc: {
-                VBRCount: 1, // Increment VBRCount by 1
-            },
-        }
-    );
-      break;
-    case "LGT":
-      await DeviceSchema.findByIdAndUpdate(
-        id,
-        {
-            $inc: {
-                LGTCount: 1, // Increment LGTCount by 1
-            },
-        }
-    );
-      break;
-    case "VLG":
-      await DeviceSchema.findByIdAndUpdate(
-        id,
-        {
-            $inc: {
-                VLGCount: 1, // Increment VLGCount by 1
-            },
-        }
-    );
-      break;
-  }
-};
 export const getAllDevices = async (req, res) => {
   try {
-    let deviceList = await DeviceSchema.find().sort({ deviceId: 1 });
-    // deviceList.sort((a, b) => a.deviceId - b.deviceId)
+    const deviceList = await DeviceSchema.find().sort({ deviceId: 1 });
 
     res.status(200).json({ devices: deviceList, total: deviceList.length });
   } catch (error) {
@@ -72,8 +34,7 @@ export const getAllDevices = async (req, res) => {
 
 export const getActiveDevices = async (req, res) => {
   try {
-    const activeDevices = await DeviceSchema.find({ isActive: true });
-    activeDevices.sort((a, b) => a.deviceId - b.deviceId)
+    const activeDevices = await DeviceSchema.find({ isActive: true }).sort({ deviceId: 1 });
 
     res
       .status(200)
@@ -97,32 +58,75 @@ export const getDevice = async (req, res) => {
 };
 
 export const getCtrlCommand = async (req, res) => {
-    const {userName, deviceName, objId, type, deviceId, controlTime, periodTime, pauseTime } = req.body;
+    const {type, deviceId, controlTime, periodTime, pauseTime } = req.body;
     if(type === 'Broadcast') {
-      return res.status(200).json({command: "BRD"});
+      return res.status(200).json({command: "BRD\n"});
     } else if(type === 'Request') {
       if(deviceId === -1) {
 
-        return res.status(200).json({command: "REQ"});
+        return res.status(200).json({command: "REQ\n"});
       } else {
-        return res.status(200).json({command: `REQ ${deviceId}`})
+        return res.status(200).json({command: `REQ ${deviceId}\n`})
       }
     } else {
-      const command = type + ' ' + deviceId + ' ' + controlTime + ' ' + periodTime + ' ' + pauseTime;
-      const log = { userName, deviceId, deviceName, action: "control", details : {
-        objId,
-        type,
-        controlTime,
-        periodTime,
-        pauseTime},
-        result: "success" };
-      createLog(log);
-      updateCtrlCounter(objId, type)
+      const command = type + ' ' + deviceId + ' ' + controlTime + ' ' + periodTime + ' ' + pauseTime + '\n';
       console.log("command: ",command)
       return res.status(200).json({command})
     }  
 };
+export const controlDevice = async (req, res) => {
+  const { id } = req.params;
+  const {userName, deviceName, type, deviceId, controlTime, periodTime, pauseTime, result } = req.body;
 
+  if (!mongoose.Types.ObjectId.isValid(id))
+    return console.log("Device not found!")
+  try {
+    // update control count
+    switch (type) {
+      case "VBR":
+        await DeviceSchema.findByIdAndUpdate(
+          id,
+          {
+              $inc: {
+                  VBRCount: 1, // Increment VBRCount by 1
+              },
+          }
+      );
+        break;
+      case "LGT":
+        await DeviceSchema.findByIdAndUpdate(
+          id,
+          {
+              $inc: {
+                  LGTCount: 1, // Increment LGTCount by 1
+              },
+          }
+      );
+        break;
+      case "VLG":
+        await DeviceSchema.findByIdAndUpdate(
+          id,
+          {
+              $inc: {
+                  VLGCount: 1, // Increment VLGCount by 1
+              },
+          }
+      );
+        break;
+    }
+    const log = { userName, deviceId, deviceName, action: "control", details : {
+      objId: id,
+      type,
+      controlTime,
+      periodTime,
+      pauseTime},
+      result };
+    await createLog(log);
+    res.status(200).json({message: "Success!"});
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
 export const addDevice = async (req, res) => {
   const { deviceId, name, userName } = req.body;
   
@@ -132,11 +136,11 @@ export const addDevice = async (req, res) => {
   try {
     const objId = (await newDevice.save())._id;
     const log = {userName, deviceId, deviceName: name, action: 'add', details: {objId}, result: 'success'};
-    createLog(log);
+    await createLog(log);
     res.status(201).json({message: "Success!"});
   } catch (error) {
     const log = {userName, deviceId, deviceName: name, action: 'add', details: {objId: ""}, result: 'error'};
-    createLog(log);
+    await createLog(log);
     res.status(400).json({ message: error.message});
   }
 
@@ -145,7 +149,7 @@ export const addDevice = async (req, res) => {
 export const renameDevice = async (req, res) => {
   const { id } = req.params;
   const { deviceId, oldName, newName, userName} = req.body;
-  console.log("Delete: ", id, "info: ", req.body)
+  console.log("rename: ", id, "info: ", req.body)
 
   if (!mongoose.Types.ObjectId.isValid(id))
     return res.status(404).send({message: "Device not found!"});
@@ -154,34 +158,33 @@ export const renameDevice = async (req, res) => {
   try {
     await DeviceSchema.findByIdAndUpdate(id, renamedDevice, { new: true });
     const log = {userName, deviceId, deviceName: newName, action: 'edit', details: { objId: id, oldName, newName }, result: 'success'};
-    createLog(log);
+    await createLog(log);
     res.status(200).json({message: "Success!"});
   } catch (error) {
     const log = {userName, deviceId, deviceName: oldName, action: 'edit', details: {objId: id, oldName, newName}, result: 'error'};
-    createLog(log);
+    await createLog(log);
     res.status(400).json({ message: error.message });
   }
 };
 
-
-
 export const updateStatus = async (req, res) => {
   const lastUpdated = new Date()
-
+  // console.log("update: ", req.body)
   const { id } = req.params;
-  if(id === "all") {
+  if(id === '-1') {
       try {
-        const updates = req.body.update; 
-        const deviceIdsToUpdate = updates.map(update => update.deviceId);
+        const updates = req.body.update;  // device active id and batteryStatus
+        const deviceIdsToUpdate = updates.map(device => device.deviceId); // list of active deviceId
 
-        for (const update of updates) {
-            const { deviceId, batteryStatus } = update;
+        // update status and batteryStatus
+        for (const device of updates) {
+            const { deviceId, batteryStatus } = device;
             await DeviceSchema.updateMany(
                 { deviceId },
                 { $set: { batteryStatus, isActive: true, lastUpdated } }
             );
         }
-
+        // update inactive
         await DeviceSchema.updateMany(
             { deviceId: { $nin: deviceIdsToUpdate } },
             { $set: { isActive: false, lastUpdated } }
@@ -195,6 +198,8 @@ export const updateStatus = async (req, res) => {
   } else {
 
     const { isActive, batteryStatus } = req.body;
+  console.log("isActive: ", isActive, "status: ", batteryStatus)
+
     if (!mongoose.Types.ObjectId.isValid(id))
       return res.status(404).send({result: "not found"});
     const updatedDevice = { _id: id, isActive, batteryStatus, lastUpdated };
@@ -215,11 +220,11 @@ export const deleteDevice = async (req, res) => {
   try{
     const deletedDevice = await DeviceSchema.findByIdAndDelete(id);
     const log = {userName, deviceId: deletedDevice.deviceId, deviceName: deletedDevice.name, action: 'delete', details: {objId: id}, result: 'success'};
-    createLog(log);
+    await createLog(log);
     res.status(200).json({message: "Success!"});
   } catch(error ) {
     const log = {userName, deviceId: delDevice.deviceId, deviceName: delDevice.name, action: 'delete', details: {objId: id}, result: 'error'};
-    createLog(log);
+    await createLog(log);
     res.status(400).json({ message: error.message });
   }
 };
