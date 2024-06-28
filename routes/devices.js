@@ -8,9 +8,11 @@ deviceRouter.get('/:id', getDevice);
 
 deviceRouter.post('/control', getCtrlCommand);
 deviceRouter.post('/', addDevice);
+
+deviceRouter.patch('/', updateStatus);
 deviceRouter.patch('/:id', renameDevice);
 deviceRouter.patch('/control/:id', controlDevice);
-deviceRouter.patch('/updateStatus/:id', updateStatus);
+
 deviceRouter.delete('/:id', deleteDevice);
 
 export default deviceRouter;
