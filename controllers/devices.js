@@ -223,6 +223,17 @@ export const updateStatus = async (req, res) => {
     update === "REQ:-1\r"
   ) {
     return res.status(200).json({ message: "Transmitter update failed!" });
+  } else if(update === "REQ:00" || update === "REQ:00\r") {
+    try {
+      // update inactive
+      await DeviceSchema.updateMany(
+        { $set: { isActive: false, lastUpdated } }
+      );
+
+      return res.status(200).json({ message: "Has no active device!" });
+    } catch (error) {
+      res.status(500).json({ result: "server error" });
+    }
   }
 
   const pairs = update.match(/\d+:\d+/g);
