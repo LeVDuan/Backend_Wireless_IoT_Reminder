@@ -1,7 +1,7 @@
 import DeviceSchema from "../models/device.js";
 import LogSchema from "../models/log.js";
 import mongoose from "mongoose";
-//
+
 const createLog = async (logInfo) => {
   const { userName, deviceId, deviceName, action, details, result } = logInfo;
   const newLog = new LogSchema({
@@ -216,37 +216,36 @@ export const updateStatus = async (req, res) => {
   const isUpdateMany = JSON.parse(req.query.many);
   console.log("Many?: ", isUpdateMany);
 
-  if (
-    update === "REQ:-1" ||
-    update === "REQ:" ||
-    update === "REQ:\r" ||
-    update === "REQ:-1\r"
-  ) {
-    return res.status(200).json({ message: "Transmitter update failed!" });
-  } else if(update === "REQ:00" || update === "REQ:00\r") {
-    try {
-      // update inactive
-      await DeviceSchema.updateMany(
-        { $set: { isActive: false, lastUpdated } }
-      );
-
-      return res.status(200).json({ message: "Has no active device!" });
-    } catch (error) {
-      res.status(500).json({ result: "server error" });
-    }
-  }
-
   const pairs = update.match(/\d+:\d+/g);
-
-  const updateData = pairs.map((pair) => {
-    const [deviceId, batteryStatus] = pair.split(":");
-    return {
-      deviceId: parseInt(deviceId),
-      batteryStatus: parseInt(batteryStatus),
-    };
-  });
-
+  
+  
   if (isUpdateMany === true) {
+    if (
+      update === "REQ:-1" ||
+      update === "REQ:" ||
+      update === "REQ:\r" ||
+      update === "REQ:-1\r"
+    ) {
+      return res.status(200).json({ message: "Transmitter update failed!" });
+    } else if(update === "REQ:00" || update === "REQ:00\r") {
+      try {
+        // update inactive
+        await DeviceSchema.updateMany(
+          { $set: { isActive: false, lastUpdated } }
+        );
+  
+        return res.status(200).json({ message: "Has no active device!" });
+      } catch (error) {
+        res.status(500).json({ result: "server error" });
+      }
+    }
+    const updateData = pairs.map((pair) => {
+      const [deviceId, batteryStatus] = pair.split(":");
+      return {
+        deviceId: parseInt(deviceId),
+        batteryStatus: parseInt(batteryStatus),
+      };
+    });
     try {
       const deviceIdsToUpdate = updateData.map((device) => device.deviceId); // list of active deviceId
 
@@ -270,14 +269,39 @@ export const updateStatus = async (req, res) => {
       res.status(500).json({ result: "server error" });
     }
   } else {
-    const { deviceId, batteryStatus } = updateData[0];
-    console.log("isActive: ", deviceId, "status: ", batteryStatus);
-
-    await DeviceSchema.updateMany(
-      { deviceId },
-      { $set: { batteryStatus, isActive: true, lastUpdated } }
-    );
-    res.status(200).json({ result: "Update successful" });
+    if (
+      update === "REQ:-1" ||
+      update === "REQ:" ||
+      update === "REQ:\r" ||
+      update === "REQ:-1\r" ||
+      update === "REQ:00" || update === "REQ:00\r"
+    ) {
+      const id = req.body.id
+      console.log("update id:", id)
+      await DeviceSchema.findByIdAndUpdate(
+        id,
+        { $set: {isActive: false, lastUpdated } }
+      );
+      return res.status(200).json({ message: "This device is inactive!" });
+    } else {
+      const updateData = pairs.map((pair) => {
+        const [deviceId, batteryStatus] = pair.split(":");
+        return {
+          deviceId: parseInt(deviceId),
+          batteryStatus: parseInt(batteryStatus),
+        };
+      });
+      const id = req.body.id
+      const { batteryStatus } = updateData[0];
+      console.log("isActive: ", id, "status: ", batteryStatus);
+  
+      await DeviceSchema.findByIdAndUpdate(
+        id,
+        { $set: { batteryStatus, isActive: true, lastUpdated } }
+      );
+      res.status(200).json({ message: "Update successful" });
+    }
+   
   }
 };
 
